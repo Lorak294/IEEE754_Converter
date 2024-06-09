@@ -112,6 +112,7 @@
             groupBox2.TabIndex = 1;
             groupBox2.TabStop = false;
             groupBox2.Text = "Kodowanie IEEE754";
+            groupBox2.Enter += groupBox2_Enter;
             // 
             // ieeeHexTb
             // 

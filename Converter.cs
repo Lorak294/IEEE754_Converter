@@ -1,32 +1,77 @@
 ﻿
+using ConverterConstants;
+
 namespace IEEE754_Converter
 {
-    public class Converter
+    public record ConversionResult
     {
-        public static CodedValue WewToIEEEConversion(CodedValue wew_val)
-        {
-            if (wew_val.ComposeUInt32() == 0)
-                return wew_val;
+        public bool Success { get; set; }
+        public string Result { get; set; }
+        public string ErrorMessage { get; set; }
 
-            return new CodedValue
-            {
-                Mantis = wew_val.Mantis,
-                SignBit = !wew_val.SignBit,
-                Exponent = (byte)((byte)(wew_val.Exponent >> 1) + 127),
-            };
+        public static ConversionResult SuccessfulConversion(string result)
+        {
+            return new ConversionResult { Success = true, Result = result, ErrorMessage = String.Empty};
         }
 
-        public static CodedValue IEEEToWewConversion(CodedValue ieee_val)
+        public static ConversionResult FailedConversion(string error_msg)
         {
-            if (ieee_val.ComposeUInt32() == 0)
-                return ieee_val;
-
-            return new CodedValue
-            {
-                Mantis = ieee_val.Mantis,
-                SignBit = !ieee_val.SignBit,
-                Exponent = (byte)((byte)(ieee_val.Exponent - (byte)127) << 1),
-            };
+            return new ConversionResult { Success = false, Result = string.Empty, ErrorMessage = error_msg };
         }
+
+    }
+    public static class Converter
+    {
+
+        public static ConversionResult TryToWewConvert(string value)
+        {
+            try
+            {
+                if (value == IEEE754Constants.Zero)
+                    return ConversionResult.SuccessfulConversion(WewConstants.Zero);
+
+                string exponent = value[IEEE754Constants.ExponentStartIndex..(IEEE754Constants.ExponentEndIndex + 1)];
+                if (exponent == IEEE754Constants.OneExponent)
+                    return ConversionResult.FailedConversion("Nieprawidłowe dane wejściowe. Wprowadzona liczba po konwersji nie będzie zgodna z formatem wewnętrzym.");
+
+                return ConversionResult.SuccessfulConversion($"{GetWewExponent(exponent)}{value[IEEE754Constants.SignIndex]}{value[IEEE754Constants.MantissaStartIndex..]}");
+            }
+            catch
+            {
+                return ConversionResult.FailedConversion("Nastąpił niespodziewany błąd podczas konwersji do kodu wewnętrznego.");
+            }
+        }
+
+        public static ConversionResult TryToIEEE754Convert(string value)
+        {
+            try
+            {
+                if (value == WewConstants.Zero)
+                    return ConversionResult.SuccessfulConversion(IEEE754Constants.Zero);
+
+                string exponent = value[..(WewConstants.ExponentEndIndex + 1)];
+                if (exponent == WewConstants.ZeroExponent)
+                    return ConversionResult.FailedConversion("Nieprawidłowe dane wejściowe. Wprowadzona liczba po konwersji nie będzie zgodna z formatem IEEE754.");
+
+                return ConversionResult.SuccessfulConversion($"{value[WewConstants.SignIndex]}{GetIEEE754Exponent(exponent)}{value[WewConstants.MantissaStartIndex..]}");
+            }
+            catch
+            {
+                return ConversionResult.FailedConversion("Nastąpił niespodziewany błąd podczas konwersji do kodu IEEE754.");
+            }
+        }
+
+        private static string GetIEEE754Exponent(string exponent)
+        {
+            int exponentValue = Convert.ToInt32(exponent, 2);
+            return Convert.ToString(exponentValue - 1, 2).PadLeft(IEEE754Constants.ExponentEndIndex - IEEE754Constants.ExponentStartIndex + 1, '0');
+        }
+
+        private static string GetWewExponent(string exponent)
+        {
+            int exponentValue = Convert.ToInt32(exponent, 2);
+            return Convert.ToString(exponentValue + 1, 2).PadLeft(WewConstants.ExponentEndIndex + 1, '0');
+        }
+
     }
 }
